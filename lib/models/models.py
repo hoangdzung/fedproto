@@ -5,7 +5,7 @@
 from torch import nn
 import torch.nn.functional as F
 import torchvision.models as models
-
+import numpy as np
 
 class MLP(nn.Module):
     def __init__(self, dim_in, dim_hidden, dim_out):
@@ -42,22 +42,59 @@ class CNNFemnist(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x, dim=1), x1
 
+# class CNNMnist(nn.Module):
+#     def __init__(self, args):
+#         super(CNNMnist, self).__init__()
+#         self.conv1 = nn.Conv2d(args.num_channels, 10, kernel_size=5)
+#         self.conv2 = nn.Conv2d(10, args.out_channels, kernel_size=5)
+#         self.conv2_drop = nn.Dropout2d()
+#         self.fc1 = nn.Linear(int(320/20*args.out_channels), 50)
+#         self.fc2 = nn.Linear(50, args.num_classes)
+
+#     def forward(self, x):
+#         x = F.relu(F.max_pool2d(self.conv1(x), 2))
+#         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+#         x = x.view(-1, x.shape[1]*x.shape[2]*x.shape[3])
+#         x1 = F.relu(self.fc1(x))
+#         x = F.dropout(x1, training=self.training)
+#         x = self.fc2(x)
+#         return F.log_softmax(x, dim=1), x1
+
 class CNNMnist(nn.Module):
     def __init__(self, args):
-        super(CNNMnist, self).__init__()
-        self.conv1 = nn.Conv2d(args.num_channels, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, args.out_channels, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(int(320/20*args.out_channels), 50)
-        self.fc2 = nn.Linear(50, args.num_classes)
+        super().__init__()
+        layers = [
+            nn.Conv2d(args.num_channels, 5, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(5),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(5, 10, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(10, 20, kernel_size=3, stride=1, padding=3),
+            nn.BatchNorm2d(20),
+            nn.ReLU(),
+            nn.MaxPool2d(2),         
+        ]
+        if np.random.rand()>0.5:
+            layers += [
+                nn.Conv2d(20, 20, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(20),
+                nn.ReLU(),
+            ]
+        layers += [
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten()
+        ]
+        self.layers = nn.Sequential(*layers)
+
+        self.fc = nn.Linear(20, args.num_classes)
 
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, x.shape[1]*x.shape[2]*x.shape[3])
-        x1 = F.relu(self.fc1(x))
+        x1 = self.layers(x)
         x = F.dropout(x1, training=self.training)
-        x = self.fc2(x)
+        x = self.fc(x)
         return F.log_softmax(x, dim=1), x1
 
 class CNNFashion_Mnist(nn.Module):

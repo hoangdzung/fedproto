@@ -484,7 +484,8 @@ def test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list
             total += len(labels)
 
         acc = correct / total
-        print('| User: {} | Global Test Acc w/o protos: {:.3f}'.format(idx, acc))
+        if args.verbose:
+            print('| User: {} | Global Test Acc w/o protos: {:.3f}'.format(idx, acc))
         acc_list_l.append(acc)
 
         # test (use global proto)
@@ -523,7 +524,8 @@ def test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list
                     loss2 = loss2.detach().numpy()
 
             acc = correct / total
-            print('| User: {} | Global Test Acc with protos: {:.5f}'.format(idx, acc))
+            if args.verbose:
+                print('| User: {} | Global Test Acc with protos: {:.5f}'.format(idx, acc))
             acc_list_g.append(acc)
             loss_list.append(loss2)
 

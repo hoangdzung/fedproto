@@ -46,7 +46,8 @@ def FedProto_taskheter(args, train_dataset, test_dataset, user_groups, user_grou
         print(f'\n | Global Training Round : {round + 1} |\n')
 
         proto_loss = 0
-        for idx in idxs_users:
+        selected_users = np.random.choice(idxs_users, int(args.frac*args.num_users))
+        for idx in selected_users:
             local_model = LocalUpdate(args=args, dataset=train_dataset, idxs=user_groups[idx])
             w, loss, acc, protos = local_model.update_weights_het(args, idx, global_protos, model=copy.deepcopy(local_model_list[idx]), global_round=round)
             agg_protos = agg_func(protos)
@@ -63,21 +64,21 @@ def FedProto_taskheter(args, train_dataset, test_dataset, user_groups, user_grou
         # update global weights
         local_weights_list = local_weights
 
-        for idx in idxs_users:
-            local_model = copy.deepcopy(local_model_list[idx])
+        for idx, user_idx in enumerate(selected_users):
+            local_model = copy.deepcopy(local_model_list[user_idx])
             local_model.load_state_dict(local_weights_list[idx], strict=True)
-            local_model_list[idx] = local_model
+            local_model_list[user_idx] = local_model
 
         # update global weights
         global_protos = proto_aggregation(local_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
         train_loss.append(loss_avg)
-
-    acc_list_l, acc_list_g, loss_list = test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list, user_groups_lt, global_protos)
-    print('For all users (with protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_g),np.std(acc_list_g)))
-    print('For all users (w/o protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_l), np.std(acc_list_l)))
-    print('For all users (with protos), mean of proto loss is {:.5f}, std of test acc is {:.5f}'.format(np.mean(loss_list), np.std(loss_list)))
+        if round % args.test_ep ==0:
+            acc_list_l, acc_list_g, loss_list = test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list, user_groups_lt, global_protos)
+            print('For all users (with protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_g),np.std(acc_list_g)))
+            print('For all users (w/o protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_l), np.std(acc_list_l)))
+            print('For all users (with protos), mean of proto loss is {:.5f}, std of test acc is {:.5f}'.format(np.mean(loss_list), np.std(loss_list)))
 
     # save protos
     if args.dataset == 'mnist':
@@ -96,7 +97,8 @@ def FedProto_modelheter(args, train_dataset, test_dataset, user_groups, user_gro
         print(f'\n | Global Training Round : {round + 1} |\n')
 
         proto_loss = 0
-        for idx in idxs_users:
+        selected_users = np.random.choice(idxs_users, int(args.frac*args.num_users))
+        for idx in selected_users:
             local_model = LocalUpdate(args=args, dataset=train_dataset, idxs=user_groups[idx])
             w, loss, acc, protos = local_model.update_weights_het(args, idx, global_protos, model=copy.deepcopy(local_model_list[idx]), global_round=round)
             agg_protos = agg_func(protos)
@@ -114,20 +116,20 @@ def FedProto_modelheter(args, train_dataset, test_dataset, user_groups, user_gro
         # update global weights
         local_weights_list = local_weights
 
-        for idx in idxs_users:
-            local_model = copy.deepcopy(local_model_list[idx])
+        for idx, user_idx in enumerate(selected_users):
+            local_model = copy.deepcopy(local_model_list[user_idx])
             local_model.load_state_dict(local_weights_list[idx], strict=True)
-            local_model_list[idx] = local_model
+            local_model_list[user_idx] = local_model
 
         # update global protos
         global_protos = proto_aggregation(local_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
         train_loss.append(loss_avg)
-
-    acc_list_l, acc_list_g = test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list, user_groups_lt, global_protos)
-    print('For all users (with protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_g),np.std(acc_list_g)))
-    print('For all users (w/o protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_l), np.std(acc_list_l)))
+        if round % args.test_ep ==0:
+            acc_list_l, acc_list_g, loss_list  = test_inference_new_het_lt(args, local_model_list, test_dataset, classes_list, user_groups_lt, global_protos)
+            print('For all users (with protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_g),np.std(acc_list_g)))
+            print('For all users (w/o protos), mean of test acc is {:.5f}, std of test acc is {:.5f}'.format(np.mean(acc_list_l), np.std(acc_list_l)))
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -147,7 +149,8 @@ if __name__ == '__main__':
     random.seed(args.seed)
 
     # load dataset and user groups
-    n_list = np.random.randint(max(2, args.ways - args.stdev), min(args.num_classes, args.ways + args.stdev + 1), args.num_users)
+    # n_list = np.random.randint(max(2, args.ways - args.stdev), min(args.num_classes, args.ways + args.stdev + 1), args.num_users)
+    n_list = [args.ways for _ in range(args.num_users)]
     if args.dataset == 'mnist':
         k_list = np.random.randint(args.shots - args.stdev + 1 , args.shots + args.stdev - 1, args.num_users)
     elif args.dataset == 'cifar10':
